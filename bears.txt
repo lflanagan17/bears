@@ -1,0 +1,159 @@
+# You start with n teddy bears (these will be given as an input from the user).
+#  At each step of the game, a number of bears may be given away based on the the following rules...
+
+# 1) If n is even, exactly n/2 bears may be given away
+# 2) If n is divisible by 3 or 4, then the number of bears
+# from multiplying the last two digits may be given away...
+# exactly (n%10) * ((n%100)/10) bears may be given away
+#  (there is an edge case here where we skip the rule if the number to be given away is 0)
+# 3) If n is divisible by 5, then exactly 42 bears may be given away
+# By following these rules, can you end with exactly 42 bears?
+
+
+
+
+# Set Up Registers
+# r14 - base pointer
+# r15 - points to the top of the stacks
+# r1 - instruction pointer; always holds n
+# r2 - return value (holds 42)
+# r3 - temp. to help compare values
+# r4 - holds the value 2 to help with modular arithmetic
+
+
+0 setn r14 100
+1 copy r15 r14
+
+# Fill r1 with user input for # of bears
+2 read r1
+# Push number of bears to top of stack
+3 pushr r1 r15
+4 setn r2 42
+
+### ALL BELOW IS TO DEAL WITH NOT ENOUGH BEARS ###
+# Check for valid input
+# If n - 42 < 0, then stop the program (invalid input)
+5 sub r3 r1 r2
+6 jltzn r3 63
+
+# Set up another stack on r12 which will hold popped values
+# !!! THIS LINE WILL BE VERY HELPFUL FOR LATER !!! #
+7 setn r12 75
+8 copy r13 r12
+# Just because I ended up deleting a line
+# And don't want to deal with redoing line numbers and jump statements
+9 nop
+
+# If n - 42 = 0, then return 42
+10 sub r3 r1 r2
+11 jeqzn r3 58
+12 jltzn r3 25
+
+################################
+##### RECURSIVE FUNCTION ####
+
+### EVEN CASE ###
+13 setn r4 2
+14 mod r5 r1 r4
+15 jeqzn r5 40
+
+### DIVISIBLE BY 3 OR 4 ###
+16 setn r4 3
+17 mod r5 r1 r4
+18 jeqzn r5 44
+
+19 setn r4 4
+20 mod r5 r1 r4
+21 jeqzn r5 44
+
+### DIVISBLE BY 5 ###
+22 setn r4 5
+23 mod r5 r1 r4
+24 jeqzn r5 54
+################################
+
+# For if none of these cases work... #
+# Pop off stack and try function again
+25 sub r5 r15 r14
+26 jeqzn r5 64
+27 addn r5 -1
+28 popr r4 r15
+29 pushr r4 r13
+30 jeqzn r5 25
+31 add r1 r1 r4
+
+# If remaining value is mod 5,
+# Base case has been reached.
+# Pop and try again
+32 setn r5 42
+33 sub r5 r5 r4
+34 jeqzn r5 25
+
+# Check if last value tried is even
+# By accessing popped value and checking if it equals n
+35 setn r3 2
+36 div r5 r1 r3
+37 sub r6 r4 r5
+# If so, the last n value tried was r2
+38 jeqzn r6 16
+
+# NOW TRY MOD 3/4 #
+39 jumpn 22
+
+# Back to dealing with even
+# First update n
+40 setn r4 2
+41 div r1 r1 r4
+
+# All the bears which were given away are
+# stored in r15...
+# We push them to the top of the stack
+# And are left with all remaining bears
+42 pushr r1 r15
+43 jumpn 7
+
+### JUMP LINE FOR MOD 3/4 ###
+# Run recirsive case again if divisible by 3/4
+44 setn r4 10
+45 setn r5 100
+# Also update r1
+46 mod r7 r1 r4
+47 mod r8 r1 r5
+48 div r8 r8 r4
+49 mul r6 r7 r8
+
+# Check to see if base case was reached (0 bears remaining))
+50 jeqzn r6 22
+# Push bears given away to top of stack
+51 pushr r6 r15
+52 sub r1 r1 r6
+53 jumpn 7
+
+# JUMP CASE FOR MOD 5 #
+# Give away 42 bears by pushing to the top of the stack
+54 setn r4 42
+55 pushr r4 r15
+# Must update r1 (n) after giving away bears
+56 addn r1 -42
+# Run recursive function again
+57 jumpn 7
+
+### WHEN THE BASE CASE HAS BEEN REACHED ###
+### AND RECURSION HAS ENDED ###
+58 sub r4 r15 r14
+# When we finally have 0 as an answer #
+59 jeqzn r4 63
+60 popr r4 r15
+# "Return" 42
+61 write r4
+62 jumpn 58
+63 halt
+
+# IF stacks runs out
+# Print previous solution
+64 sub r4 r13 r12
+65 jeqzn r4 69
+66 popr r4 r13
+67 pushr r4 r15
+68 jumpn 64
+69 jumpn 58
